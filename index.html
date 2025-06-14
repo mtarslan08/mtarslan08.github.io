@@ -3,58 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kral YKS Platformu</title>
+  <title>Ders Sayfası</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body {
-      background-color: #f9f9f9;
-      font-family: 'Segoe UI', sans-serif;
-    }
-    .navbar {
-      margin-bottom: 20px;
-    }
-    .card {
-      margin-bottom: 20px;
-    }
-    .preview {
-      margin-top: 10px;
-    }
-    video, img {
-      max-width: 100%;
-      border-radius: 6px;
-    }
+    body { background-color: #f8f9fa; font-family: 'Segoe UI', sans-serif; }
+    .preview { margin-top: 10px; }
+    video, img { max-width: 100%; border-radius: 6px; }
   </style>
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-success">
-  <div class="container-fluid">
-    <a class="navbar-brand" href="#">Kral YKS</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navbarNav">
-      <ul class="navbar-nav">
-        <li class="nav-item">
-          <a class="nav-link active" href="#" onclick="addLesson()">+ Ders Ekle</a>
-        </li>
-      </ul>
-    </div>
+<div class="container py-4">
+  <h2 id="lessonTitle">Ders Yükleniyor...</h2>
+  <div class="mb-3">
+    <input type="text" class="form-control mb-2" id="topicTitle" placeholder="Konu Başlığı">
+    <input type="file" class="form-control mb-2" id="videoFile" accept="video/*">
+    <input type="file" class="form-control mb-2" id="imageFile" accept="image/*">
+    <button class="btn btn-primary" onclick="addTopic()">Konu Ekle</button>
+    <div class="mt-2 text-muted" id="loading" style="display:none;">Yükleniyor...</div>
   </div>
-</nav>
-
-<div class="container">
-  <div id="lessonContainer"></div>
+  <ul class="list-group" id="topicList"></ul>
 </div>
 
-<!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
-
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
 <script>
   const firebaseConfig = {
     apiKey: "AIzaSyBLMCQk2zpsYr1fgTBw_OslnAOJvlNw1Ag",
@@ -66,45 +40,39 @@
   };
 
   firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
   const db = firebase.firestore();
   const storage = firebase.storage();
 
-  window.addLesson = async function() {
-    const lessonName = prompt("Ders Adı?");
-    if (!lessonName) return;
+  const urlParams = new URLSearchParams(window.location.search);
+  const lessonId = urlParams.get("id");
 
-    const docRef = await db.collection("lessons").add({
-      name: lessonName,
-      createdAt: new Date()
-    });
+  let currentUser = null;
 
-    renderLesson(docRef.id, lessonName);
+  auth.onAuthStateChanged(user => {
+    if (!user) {
+      alert("Lütfen giriş yapınız.");
+      window.location.href = "index.html";
+    } else {
+      currentUser = user;
+      loadLesson();
+      loadTopics();
+    }
+  });
+
+  async function loadLesson() {
+    const doc = await db.collection("lessons").doc(lessonId).get();
+    if (!doc.exists) return;
+    document.getElementById("lessonTitle").textContent = doc.data().name;
   }
 
-  function renderLesson(id, name) {
-    const div = document.createElement("div");
-    div.className = "card";
-    div.innerHTML = `
-      <div class="card-header">${name}</div>
-      <div class="card-body">
-        <input type="text" placeholder="Konu Başlığı" class="form-control mb-2" id="topic-${id}">
-        <input type="file" accept="video/*" class="form-control mb-2" id="video-${id}">
-        <input type="file" accept="image/*" class="form-control mb-2" id="image-${id}">
-        <button class="btn btn-primary" onclick="addTopic('${id}')">Konu Ekle</button>
-        <div class="mt-3" id="loading-${id}" style="display:none;">Yükleniyor...</div>
-        <ul class="mt-3 list-group" id="topics-${id}"></ul>
-      </div>
-    `;
-    document.getElementById("lessonContainer").appendChild(div);
-  }
+  async function addTopic() {
+    const title = document.getElementById("topicTitle").value;
+    const videoFile = document.getElementById("videoFile").files[0];
+    const imageFile = document.getElementById("imageFile").files[0];
+    const loading = document.getElementById("loading");
 
-  window.addTopic = async function (lessonId) {
-    const topicTitle = document.getElementById(`topic-${lessonId}`).value;
-    const videoFile = document.getElementById(`video-${lessonId}`).files[0];
-    const imageFile = document.getElementById(`image-${lessonId}`).files[0];
-    const loading = document.getElementById(`loading-${lessonId}`);
     let videoURL = null, imageURL = null;
-
     loading.style.display = "block";
 
     try {
@@ -121,40 +89,40 @@
       }
 
       await db.collection(`lessons/${lessonId}/topics`).add({
-        title: topicTitle,
+        title,
         video: videoURL,
         image: imageURL,
+        userId: currentUser.uid,
         createdAt: new Date()
       });
 
-      const list = document.getElementById(`topics-${lessonId}`);
-      const item = document.createElement("li");
-      item.className = "list-group-item";
-      item.innerHTML = `<strong>${topicTitle}</strong>
-        <div class="preview">
-          ${videoURL ? `<video controls src="${videoURL}" width="100%"></video>` : ""}
-          ${imageURL ? `<img src="${imageURL}" alt="Resim" />` : ""}
-        </div>`;
-      list.appendChild(item);
-
-      alert("Konu ve içerik kaydedildi!");
-    } catch (error) {
-      console.error("Hata:", error);
-      alert("Bir hata oluştu. Lütfen tekrar deneyin.");
+      document.getElementById("topicTitle").value = "";
+      document.getElementById("videoFile").value = null;
+      document.getElementById("imageFile").value = null;
+      loadTopics();
+    } catch (err) {
+      console.error("Konu ekleme hatası:", err);
     } finally {
       loading.style.display = "none";
     }
   }
 
-  async function loadLessons() {
-    const snapshot = await db.collection("lessons").get();
+  async function loadTopics() {
+    const list = document.getElementById("topicList");
+    list.innerHTML = "";
+    const snapshot = await db.collection(`lessons/${lessonId}/topics`).orderBy("createdAt").get();
     snapshot.forEach(doc => {
-      renderLesson(doc.id, doc.data().name);
+      const d = doc.data();
+      const li = document.createElement("li");
+      li.className = "list-group-item";
+      li.innerHTML = `<strong>${d.title}</strong>
+        <div class="preview">
+          ${d.video ? `<video controls src="${d.video}"></video>` : ""}
+          ${d.image ? `<img src="${d.image}" class="img-fluid mt-2" />` : ""}
+        </div>`;
+      list.appendChild(li);
     });
   }
-
-  loadLessons();
 </script>
-
 </body>
 </html>
