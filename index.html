@@ -16,6 +16,13 @@
     .card {
       margin-bottom: 20px;
     }
+    .preview {
+      margin-top: 10px;
+    }
+    video, img {
+      max-width: 100%;
+      border-radius: 6px;
+    }
   </style>
 </head>
 <body>
@@ -84,6 +91,7 @@
         <input type="file" accept="video/*" class="form-control mb-2" id="video-${id}">
         <input type="file" accept="image/*" class="form-control mb-2" id="image-${id}">
         <button class="btn btn-primary" onclick="addTopic('${id}')">Konu Ekle</button>
+        <div class="mt-3" id="loading-${id}" style="display:none;">Yükleniyor...</div>
         <ul class="mt-3 list-group" id="topics-${id}"></ul>
       </div>
     `;
@@ -94,29 +102,48 @@
     const topicTitle = document.getElementById(`topic-${lessonId}`).value;
     const videoFile = document.getElementById(`video-${lessonId}`).files[0];
     const imageFile = document.getElementById(`image-${lessonId}`).files[0];
+    const loading = document.getElementById(`loading-${lessonId}`);
     let videoURL = null, imageURL = null;
 
-    if (videoFile) {
-      const videoRef = storage.ref(`videos/${videoFile.name}`);
-      await videoRef.put(videoFile);
-      videoURL = await videoRef.getDownloadURL();
+    loading.style.display = "block";
+
+    try {
+      if (videoFile) {
+        const videoRef = storage.ref(`videos/${Date.now()}_${videoFile.name}`);
+        await videoRef.put(videoFile);
+        videoURL = await videoRef.getDownloadURL();
+      }
+
+      if (imageFile) {
+        const imageRef = storage.ref(`images/${Date.now()}_${imageFile.name}`);
+        await imageRef.put(imageFile);
+        imageURL = await imageRef.getDownloadURL();
+      }
+
+      await db.collection(`lessons/${lessonId}/topics`).add({
+        title: topicTitle,
+        video: videoURL,
+        image: imageURL,
+        createdAt: new Date()
+      });
+
+      const list = document.getElementById(`topics-${lessonId}`);
+      const item = document.createElement("li");
+      item.className = "list-group-item";
+      item.innerHTML = `<strong>${topicTitle}</strong>
+        <div class="preview">
+          ${videoURL ? `<video controls src="${videoURL}" width="100%"></video>` : ""}
+          ${imageURL ? `<img src="${imageURL}" alt="Resim" />` : ""}
+        </div>`;
+      list.appendChild(item);
+
+      alert("Konu ve içerik kaydedildi!");
+    } catch (error) {
+      console.error("Hata:", error);
+      alert("Bir hata oluştu. Lütfen tekrar deneyin.");
+    } finally {
+      loading.style.display = "none";
     }
-
-    if (imageFile) {
-      const imageRef = storage.ref(`images/${imageFile.name}`);
-      await imageRef.put(imageFile);
-      imageURL = await imageRef.getDownloadURL();
-    }
-
-    await db.collection(`lessons/${lessonId}/topics`).add({
-      title: topicTitle,
-      video: videoURL,
-      image: imageURL,
-      createdAt: new Date()
-    });
-
-    alert("Konu kaydedildi!");
-    document.getElementById(`topics-${lessonId}`).innerHTML += `<li class="list-group-item">${topicTitle}</li>`;
   }
 
   async function loadLessons() {
