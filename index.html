@@ -1,1 +1,119 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kral YKS Platformu</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background-color: #4CAF50;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      font-size: 24px;
+    }
+    nav {
+      background-color: #333;
+      overflow: hidden;
+    }
+    nav button {
+      background-color: #333;
+      color: white;
+      padding: 14px 20px;
+      border: none;
+      cursor: pointer;
+      float: left;
+    }
+    nav button:hover {
+      background-color: #575757;
+    }
+    .container {
+      padding: 20px;
+    }
+    .section {
+      background: white;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+    }
+    .topic {
+      margin-left: 20px;
+      padding: 10px;
+      background: #e9e9e9;
+      border-radius: 5px;
+      margin-top: 5px;
+    }
+    input[type="text"], input[type="file"] {
+      padding: 6px;
+      margin-top: 5px;
+      width: 100%;
+    }
+    .add-btn {
+      margin-top: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 8px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .add-btn:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    Kral YKS'ye Hoşgeldiniz!
+  </header>
+
+  <nav>
+    <button onclick="addLesson()">+ Ders Ekle</button>
+  </nav>
+
+  <div class="container" id="lessonContainer">
+    <!-- Dersler buraya eklenecek -->
+  </div>
+
+  <script>
+    let lessonCount = 0;
+
+    function addLesson() {
+      lessonCount++;
+      const lessonDiv = document.createElement("div");
+      lessonDiv.className = "section";
+      lessonDiv.id = `lesson-${lessonCount}`;
+      lessonDiv.innerHTML = `
+        <h3>Ders ${lessonCount}</h3>
+        <input type="text" placeholder="Ders Adı Yazınız">
+        <button class="add-btn" onclick="addTopic(${lessonCount})">+ Konu Ekle</button>
+        <div id="topics-${lessonCount}"></div>
+      `;
+      document.getElementById("lessonContainer").appendChild(lessonDiv);
+    }
+
+    function addTopic(lessonId) {
+      const topicsDiv = document.getElementById(`topics-${lessonId}`);
+      const topicDiv = document.createElement("div");
+      topicDiv.className = "topic";
+      topicDiv.innerHTML = `
+        <input type="text" placeholder="Konu Başlığı">
+        <label>Video Yükle:</label>
+        <input type="file" accept="video/*">
+        <label>Resim Yükle:</label>
+        <input type="file" accept="image/*">
+      `;
+      topicsDiv.appendChild(topicDiv);
+    }
+  </script>
+
+</body>
+</html>
 
