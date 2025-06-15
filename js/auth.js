@@ -1,29 +1,17 @@
 // js/auth.js
 
-document.addEventListener("DOMContentLoaded", () => {
-  const loginBtn = document.getElementById("loginBtn");
-  const logoutBtn = document.getElementById("logoutBtn");
+auth.onAuthStateChanged(user => {
+  const currentPage = window.location.pathname;
 
-  if (loginBtn) {
-    loginBtn.onclick = () => {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      auth.signInWithPopup(provider).catch(err => alert("Giriş başarısız: " + err.message));
-    };
-  }
-
-  if (logoutBtn) {
-    logoutBtn.onclick = () => {
-      auth.signOut().then(() => window.location.href = "index.html");
-    };
-  }
-
-  auth.onAuthStateChanged(user => {
-    const protectedRoutes = ["derslerim.html", "ders.html", "konu.html"];
-    const currentPage = window.location.pathname.split("/").pop();
-
-    if (!user && protectedRoutes.includes(currentPage)) {
-      alert("Lütfen giriş yapınız.");
+  if (user) {
+    // Eğer giriş yapılmışsa ve şu an index.html'deysek, yönlendir
+    if (currentPage.endsWith("index.html") || currentPage === "/" || currentPage === "/index.html") {
+      window.location.href = "derslerim.html";
+    }
+  } else {
+    // Eğer giriş yapılmamışsa ve index.html dışında bir sayfadaysa, ana sayfaya yönlendir
+    if (!currentPage.endsWith("index.html") && currentPage !== "/") {
       window.location.href = "index.html";
     }
-  });
+  }
 });
