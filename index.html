@@ -18,6 +18,7 @@
     <h1 class="my-4">Kral YKS Platformu</h1>
     <p>Devam etmek için giriş yapınız:</p>
     <button class="btn btn-primary" onclick="signIn()">Google ile Giriş Yap</button>
+    <div id="authError" class="text-danger mt-2" style="display:none;"></div>
   </div>
 
   <div id="mainContent" style="display:none;">
@@ -56,12 +57,20 @@
       document.getElementById("mainContent").style.display = "block";
       document.getElementById("userInfo").textContent = `Giriş yapan: ${user.displayName}`;
       loadLessons();
+    } else {
+      document.getElementById("authSection").style.display = "block";
+      document.getElementById("mainContent").style.display = "none";
     }
   });
 
   function signIn() {
     const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider);
+    auth.signInWithPopup(provider).catch(error => {
+      console.error("Giriş hatası:", error);
+      const errBox = document.getElementById("authError");
+      errBox.style.display = "block";
+      errBox.textContent = "Giriş başarısız: " + error.message;
+    });
   }
 
   function signOut() {
