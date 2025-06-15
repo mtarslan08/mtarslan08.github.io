@@ -1,108 +1,26 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YKS Platformu</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>YKS Platformu - Giriş</title>
+  <link rel="stylesheet" href="css/style.css">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body { background-color: #eef1f5; font-family: 'Segoe UI', sans-serif; }
-    .container { max-width: 800px; margin: auto; padding-top: 50px; }
-    .btn-lg { font-size: 1.3rem; padding: 12px 24px; }
-    .card { margin-top: 20px; }
-    .logout-btn { float: right; }
-  </style>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+
+  <!-- Firebase config and auth -->
+  <script src="js/firebase.js"></script>
+  <script src="js/auth.js" defer></script>
 </head>
 <body>
-
-<div class="container">
-  <div class="text-center mb-4">
-    <h1 class="mb-3">YKS Ders Platformu</h1>
+  <div class="container text-center py-5">
+    <h1 class="mb-4">YKS Platformuna Hoş Geldiniz</h1>
     <button id="loginBtn" class="btn btn-success btn-lg">Google ile Giriş Yap</button>
-    <button id="logoutBtn" class="btn btn-danger btn-lg logout-btn d-none">Çıkış Yap</button>
   </div>
-
-  <div id="mainContent" class="d-none">
-    <div class="card p-4 shadow-sm">
-      <input type="text" class="form-control mb-3" id="lessonName" placeholder="Ders Adı">
-      <button class="btn btn-primary btn-lg w-100" onclick="addLesson()">Ders Ekle</button>
-    </div>
-    <div id="lessonList" class="mt-4"></div>
-  </div>
-</div>
-
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyBLMCQk2zpsYr1fgTBw_OslnAOJvlNw1Ag",
-    authDomain: "mtarslan-1ae92.firebaseapp.com",
-    projectId: "mtarslan-1ae92",
-    storageBucket: "mtarslan-1ae92.appspot.com",
-    messagingSenderId: "980206613434",
-    appId: "1:980206613434:web:0ec37a34f8e251b5626383"
-  };
-
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
-  const db = firebase.firestore();
-
-  const loginBtn = document.getElementById("loginBtn");
-  const logoutBtn = document.getElementById("logoutBtn");
-  const mainContent = document.getElementById("mainContent");
-  const lessonList = document.getElementById("lessonList");
-
-  loginBtn.onclick = () => {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider).catch(err => alert("Giriş başarısız: " + err.message));
-  };
-
-  logoutBtn.onclick = () => {
-    auth.signOut();
-  };
-
-  auth.onAuthStateChanged(user => {
-    if (user) {
-      loginBtn.classList.add("d-none");
-      logoutBtn.classList.remove("d-none");
-      mainContent.classList.remove("d-none");
-      loadLessons();
-    } else {
-      loginBtn.classList.remove("d-none");
-      logoutBtn.classList.add("d-none");
-      mainContent.classList.add("d-none");
-    }
-  });
-
-  async function addLesson() {
-    const name = document.getElementById("lessonName").value.trim();
-    if (!name) return alert("Lütfen ders adı girin.");
-    const user = auth.currentUser;
-    await db.collection("lessons").add({
-      name,
-      userId: user.uid,
-      createdAt: new Date()
-    });
-    document.getElementById("lessonName").value = "";
-    loadLessons();
-  }
-
-  async function loadLessons() {
-    const user = auth.currentUser;
-    const snapshot = await db.collection("lessons").where("userId", "==", user.uid).orderBy("createdAt", "desc").get();
-    lessonList.innerHTML = "";
-    snapshot.forEach(doc => {
-      const d = doc.data();
-      const card = document.createElement("div");
-      card.className = "card p-3 shadow-sm";
-      card.innerHTML = `
-        <h5>${d.name}</h5>
-        <a href="ders.html?id=${doc.id}" class="btn btn-outline-primary mt-2">Derse Git</a>
-      `;
-      lessonList.appendChild(card);
-    });
-  }
-</script>
 </body>
 </html>
