@@ -1,28 +1,38 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Ders Sayfası</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body { background-color: #f8f9fa; font-family: 'Segoe UI', sans-serif; }
+    body { background-color: #eef1f5; font-family: 'Segoe UI', sans-serif; }
+    .container { max-width: 800px; margin: auto; }
+    .btn-primary { font-size: 1.2rem; padding: 10px 20px; }
+    input[type="text"], input[type="file"] { font-size: 1rem; }
+    .progress { height: 20px; display: none; margin-top: 10px; }
     .preview { margin-top: 10px; }
     video, img { max-width: 100%; border-radius: 6px; }
+    .topic-card { margin-top: 20px; }
   </style>
 </head>
 <body>
 
 <div class="container py-4">
-  <h2 id="lessonTitle">Ders Yükleniyor...</h2>
-  <div class="mb-3">
-    <input type="text" class="form-control mb-2" id="topicTitle" placeholder="Konu Başlığı">
+  <h2 id="lessonTitle" class="mb-4 text-center">Ders Yükleniyor...</h2>
+
+  <div class="card shadow p-4">
+    <input type="text" class="form-control mb-3" id="topicTitle" placeholder="Konu Başlığı">
     <input type="file" class="form-control mb-2" id="videoFile" accept="video/*">
     <input type="file" class="form-control mb-2" id="imageFile" accept="image/*">
-    <button class="btn btn-primary" onclick="addTopic()">Konu Ekle</button>
+    <button class="btn btn-primary w-100" onclick="addTopic()">Konu Ekle</button>
+    <div class="progress mt-3" id="uploadProgress">
+      <div class="progress-bar progress-bar-striped progress-bar-animated" id="progressBar" style="width: 0%"></div>
+    </div>
     <div class="mt-2 text-muted" id="loading" style="display:none;">Yükleniyor...</div>
   </div>
-  <ul class="list-group" id="topicList"></ul>
+
+  <div id="topicList" class="mt-4"></div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
@@ -46,7 +56,6 @@
 
   const urlParams = new URLSearchParams(window.location.search);
   const lessonId = urlParams.get("id");
-
   let currentUser = null;
 
   auth.onAuthStateChanged(async user => {
@@ -71,24 +80,40 @@
   }
 
   async function addTopic() {
-    const title = document.getElementById("topicTitle").value;
+    const title = document.getElementById("topicTitle").value.trim();
     const videoFile = document.getElementById("videoFile").files[0];
     const imageFile = document.getElementById("imageFile").files[0];
     const loading = document.getElementById("loading");
+    const progressDiv = document.getElementById("uploadProgress");
+    const progressBar = document.getElementById("progressBar");
+
+    if (!title) return alert("Konu başlığı boş bırakılamaz.");
 
     let videoURL = null, imageURL = null;
     loading.style.display = "block";
+    progressDiv.style.display = "block";
+    progressBar.style.width = "0%";
 
     try {
       if (videoFile) {
         const videoRef = storage.ref(`videos/${Date.now()}_${videoFile.name}`);
-        await videoRef.put(videoFile);
+        const uploadTask = videoRef.put(videoFile);
+        uploadTask.on("state_changed", snapshot => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          progressBar.style.width = progress + "%";
+        });
+        await uploadTask;
         videoURL = await videoRef.getDownloadURL();
       }
 
       if (imageFile) {
         const imageRef = storage.ref(`images/${Date.now()}_${imageFile.name}`);
-        await imageRef.put(imageFile);
+        const uploadTask = imageRef.put(imageFile);
+        uploadTask.on("state_changed", snapshot => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          progressBar.style.width = progress + "%";
+        });
+        await uploadTask;
         imageURL = await imageRef.getDownloadURL();
       }
 
@@ -103,6 +128,8 @@
       document.getElementById("topicTitle").value = "";
       document.getElementById("videoFile").value = null;
       document.getElementById("imageFile").value = null;
+      progressDiv.style.display = "none";
+      progressBar.style.width = "0%";
       loadTopics();
     } catch (err) {
       console.error("Konu ekleme hatası:", err);
@@ -114,17 +141,17 @@
   async function loadTopics() {
     const list = document.getElementById("topicList");
     list.innerHTML = "";
-    const snapshot = await db.collection(`lessons/${lessonId}/topics`).orderBy("createdAt").get();
+    const snapshot = await db.collection(`lessons/${lessonId}/topics`).orderBy("createdAt", "desc").get();
     snapshot.forEach(doc => {
       const d = doc.data();
-      const li = document.createElement("li");
-      li.className = "list-group-item";
-      li.innerHTML = `<strong>${d.title}</strong>
+      const card = document.createElement("div");
+      card.className = "card topic-card shadow-sm p-3 mb-3";
+      card.innerHTML = `<h5>${d.title}</h5>
         <div class="preview">
-          ${d.video ? `<video controls src="${d.video}"></video>` : ""}
+          ${d.video ? `<video controls src="${d.video}" class="mt-2"></video>` : ""}
           ${d.image ? `<img src="${d.image}" class="img-fluid mt-2" />` : ""}
         </div>`;
-      list.appendChild(li);
+      list.appendChild(card);
     });
   }
 </script>
