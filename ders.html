@@ -25,7 +25,6 @@
   <ul class="list-group" id="topicList"></ul>
 </div>
 
-<!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
@@ -56,15 +55,28 @@
       window.location.href = "index.html";
     } else {
       currentUser = user;
-      loadLesson();
-      loadTopics();
+      verifyLessonAccess();
     }
   });
 
-  async function loadLesson() {
-    const doc = await db.collection("lessons").doc(lessonId).get();
-    if (!doc.exists) return;
-    document.getElementById("lessonTitle").textContent = doc.data().name;
+  async function verifyLessonAccess() {
+    try {
+      const doc = await db.collection("lessons").doc(lessonId).get();
+      if (!doc.exists) {
+        alert("Ders bulunamadı.");
+        return window.location.href = "index.html";
+      }
+      const data = doc.data();
+      if (data.userId !== currentUser.uid) {
+        alert("Bu derse erişim yetkiniz yok.");
+        return window.location.href = "index.html";
+      }
+      document.getElementById("lessonTitle").textContent = data.name;
+      loadTopics();
+    } catch (error) {
+      console.error("Erişim hatası:", error);
+      window.location.href = "index.html";
+    }
   }
 
   async function addTopic() {
