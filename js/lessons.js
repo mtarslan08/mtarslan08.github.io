@@ -1,64 +1,94 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const addLessonBtn = document.getElementById("addLessonBtn");
-  const lessonInput = document.getElementById("lessonInput");
-  const lessonList = document.getElementById("lessonList");
+const lessonMap = {
+  TYT: ["Türkçe", "Matematik", "Geometri", "Fizik", "Kimya", "Biyoloji", "Sosyal"],
+  AYT: ["Matematik", "Fizik", "Kimya", "Biyoloji"]
+};
 
-  let currentUser = null;
+let currentSection = "TYT";
+const container = document.getElementById("lessonsContainer");
 
-  auth.onAuthStateChanged(user => {
-    if (user) {
-      currentUser = user;
-      loadLessons();
-    } else {
-      console.warn("Kullanıcı giriş yapmamış.");
+function createLessonUI(lessonName) {
+  const div = document.createElement("div");
+  div.className = "card mb-3 p-3";
+  div.innerHTML = `
+    <h5>${lessonName}</h5>
+    <input type="text" class="form-control mb-2 topicInput" placeholder="Konu Adı">
+    <button class="btn btn-success btn-sm addTopicBtn">Konu Ekle</button>
+    <ul class="mt-2 topicList list-group"></ul>
+  `;
+  const addBtn = div.querySelector(".addTopicBtn");
+  const input = div.querySelector(".topicInput");
+  const list = div.querySelector(".topicList");
+
+  addBtn.addEventListener("click", () => {
+    const topic = input.value.trim();
+    const userId = auth.currentUser?.uid;
+    if (topic && userId) {
+      db.collection("topics").add({
+        userId,
+        section: currentSection,
+        lesson: lessonName,
+        topic,
+        createdAt: new Date()
+      }).then(() => {
+        input.value = "";
+        loadTopics();
+      });
     }
   });
 
-  addLessonBtn.onclick = async () => {
-    if (!currentUser) {
-      alert("Giriş yapılmadan ders eklenemez.");
-      return;
-    }
+  container.appendChild(div);
+}
 
-    const lessonName = lessonInput.value.trim();
-    if (!lessonName) return alert("Ders adı boş olamaz.");
+function loadLessons(section) {
+  currentSection = section;
+  container.innerHTML = "";
+  lessonMap[section].forEach(lesson => {
+    createLessonUI(lesson);
+  });
+  loadTopics();
+}
 
-    try {
-      await db.collection("lessons").add({
-        name: lessonName,
-        userId: currentUser.uid,
-        createdAt: new Date()
+function loadTopics() {
+  const userId = auth.currentUser?.uid;
+  if (!userId) return;
+
+  db.collection("topics")
+    .where("userId", "==", userId)
+    .where("section", "==", currentSection)
+    .orderBy("lesson")
+    .orderBy("createdAt")
+    .get()
+    .then(snapshot => {
+      const lessonCards = container.querySelectorAll(".card");
+      lessonCards.forEach(card => {
+        const lessonTitle = card.querySelector("h5").innerText;
+        const list = card.querySelector(".topicList");
+        list.innerHTML = "";
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          if (data.lesson === lessonTitle) {
+            const li = document.createElement("li");
+            li.className = "list-group-item";
+            li.textContent = data.topic;
+            list.appendChild(li);
+          }
+        });
       });
-      lessonInput.value = "";
-      loadLessons();
-    } catch (err) {
-      alert("Ders eklenirken hata oluştu: " + err.message);
-    }
-  };
+    });
+}
 
-  async function loadLessons() {
-    if (!currentUser) return;
+// Sekmeler arası geçiş
+document.getElementById("tabMenu").addEventListener("click", (e) => {
+  e.preventDefault();
+  if (e.target.tagName === "A") {
+    document.querySelectorAll("#tabMenu .nav-link").forEach(link => link.classList.remove("active"));
+    e.target.classList.add("active");
+    loadLessons(e.target.dataset.section);
+  }
+});
 
-    try {
-      const snapshot = await db.collection("lessons")
-        .where("userId", "==", currentUser.uid)
-        .orderBy("createdAt", "desc")
-        .get();
-
-      lessonList.innerHTML = "";
-
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        const div = document.createElement("div");
-        div.className = "card p-3 mb-3";
-        div.innerHTML = `
-          <h5>${data.name}</h5>
-          <a href="ders.html?id=${doc.id}" class="btn btn-outline-primary mt-2">Derse Git</a>
-        `;
-        lessonList.appendChild(div);
-      });
-    } catch (err) {
-      console.error("Dersler yüklenemedi:", err.message);
-    }
+auth.onAuthStateChanged(user => {
+  if (user) {
+    loadLessons(currentSection);
   }
 });
